@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = git@github.com:Pawan-20/BE-senquire-Image-processing.git
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:Pawan-20/FE-senquire-Image-processing.git
