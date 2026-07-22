@@ -6,9 +6,9 @@ A React, FastAPI, Celery, Redis, and MongoDB Atlas application that processes an
 
 1. React lists files in `backend/data/images/`. When the user creates a batch, FastAPI stores one batch and its queued image records in MongoDB.
 2. The review page opens an SSE connection. After Redis confirms the subscription, React asks FastAPI to start processing, preventing early live events from being missed.
-3. FastAPI submits three independent Celery tasks per image: classification, thumbnail generation, and metadata extraction. Redis is the broker and temporary result backend.
+3. FastAPI submits one lightweight batch-dispatch task. Celery then runs one consolidated task per image for classification, thumbnail generation, metadata, persistence, and live publication.
 4. Celery uses a prefork pool. With `--concurrency=4`, four worker processes execute tasks concurrently; this is process-based parallelism, not application-level multithreading. Each process keeps its own model in memory.
-5. A Celery chord waits for an image's three tasks. Its finalizer merges the results, updates MongoDB, and publishes a small JSON status event through Redis pub/sub.
+5. Each consolidated image task updates MongoDB and publishes a small JSON status event through Redis pub/sub.
 6. FastAPI forwards events over SSE. React merges each event into local state and immediately displays status, prediction, confidence, and the thumbnail served over normal HTTP.
 7. Redis pub/sub is non-durable, so React also fetches the MongoDB snapshot every second during processing. SSE is the low-latency path; polling recovers missed events.
 
@@ -16,7 +16,7 @@ A React, FastAPI, Celery, Redis, and MongoDB Atlas application that processes an
 
 ## Why this architecture?
 
-CPU-heavy inference should not occupy FastAPI request handlers. Celery separates long-running work from the API; Redis lets multiple worker processes or containers consume one queue; MongoDB remains the durable source of truth. The three independent operations per image can run concurrently, while the chord provides one clear persistence point. Worker concurrency can scale without changing the API or frontend.
+CPU-heavy inference should not occupy FastAPI request handlers. Celery separates long-running work from the API; Redis lets multiple worker processes or containers consume one queue; MongoDB remains the durable source of truth. Worker concurrency processes several complete images in parallel while keeping one clear persistence point per image. Concurrency can scale without changing the API or frontend.
 
 SSE was chosen over WebSockets because this application has one narrow live requirement: the server sends progress to a consuming frontend. Client actions already use REST, there is no collaborative multi-user session, and no duplex channel is needed. SSE uses ordinary HTTP, the browser's native `EventSource`, and automatic reconnection.
 
@@ -73,7 +73,7 @@ backend/models/defect-classifier-resnet18/
 └── .cache/                  # Hugging Face cache metadata, if supplied
 ```
 
-The pretrained model is `[Seif-melz/defect-classifier-resnet18](https://huggingface.co/Seif-melz/defect-classifier-resnet18)`. The exact revision is pinned in `backend/.env.example`. If the checkpoint is missing, API/worker startup downloads it automatically from that pinned revision. `backend/models/` is ignored by Git.
+The pretrained model is `[Seif-melz/defect-classifier-resnet18](https://huggingface.co/Seif-melz/defect-classifier-resnet18)`. The exact revision is pinned in `backend/.env.example`. If the checkpoint is missing, Celery worker startup downloads it automatically from that pinned revision. `backend/models/` is ignored by Git.
 
 In this workspace, `pytorch_model.pth` and its cache metadata have already been downloaded to the path above. Place source images in `backend/data/images/`; thumbnails are generated in `backend/data/thumbnails/`.
 
