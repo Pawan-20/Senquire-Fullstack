@@ -12,7 +12,7 @@ A React, FastAPI, Celery, Redis, and MongoDB Atlas application that processes an
 6. FastAPI forwards events over SSE. React merges each event into local state and immediately displays status, prediction, confidence, and the thumbnail served over normal HTTP.
 7. Redis pub/sub is non-durable, so React also fetches the MongoDB snapshot every second during processing. SSE is the low-latency path; polling recovers missed events.
 
-See [flow.md](flow.md) for a detailed 50-image example.
+
 
 ## Why this architecture?
 
@@ -65,7 +65,7 @@ npm ci
 
 ### Download the pretrained model before running
 
-Download the model folder from **[MODEL GOOGLE DRIVE/DOC LINK — replace this placeholder with the provided link]** and place it at:
+Download the model folder from **[[https://drive.google.com/drive/folders/1z6I9MI6835YDTUJWYmR-dA8XJmt2d3l5?usp=sharing](https://drive.google.com/drive/folders/1z6I9MI6835YDTUJWYmR-dA8XJmt2d3l5?usp=sharing)]** and place it in the backend. The structure of backend should now look like this : 
 
 ```text
 backend/models/defect-classifier-resnet18/
@@ -143,7 +143,11 @@ docker compose up redis
 docker compose logs -f backend celery_worker
 docker compose down --remove-orphans
 ```
+
 ---
+
+
+
 ## Entire architecture
 
 ```text
